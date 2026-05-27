@@ -1,0 +1,60 @@
+import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
+import { formatDate, scoreColor } from "@/lib/utils";
+import type { AnalyticsHistory } from "@/types";
+
+interface SessionHistoryTableProps {
+  history: AnalyticsHistory[];
+}
+
+export function SessionHistoryTable({ history }: SessionHistoryTableProps) {
+  if (history.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-gray-400">
+        No sessions yet. Upload a resume to get started.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-100">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-medium text-gray-500">
+            <th className="px-4 py-3">Field</th>
+            <th className="px-4 py-3">Level</th>
+            <th className="px-4 py-3">Questions</th>
+            <th className="px-4 py-3">Score</th>
+            <th className="px-4 py-3">Date</th>
+            <th className="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {[...history].reverse().map((h) => (
+            <tr key={h.session_id} className="bg-white hover:bg-gray-50">
+              <td className="px-4 py-3 font-medium text-gray-800">{h.field}</td>
+              <td className="px-4 py-3">
+                <Badge variant="purple">{h.level}</Badge>
+              </td>
+              <td className="px-4 py-3 text-gray-500">
+                {h.answered_questions} / {h.total_questions}
+              </td>
+              <td className={`px-4 py-3 font-semibold ${scoreColor(h.avg_score)}`}>
+                {h.avg_score.toFixed(1)}
+              </td>
+              <td className="px-4 py-3 text-gray-400">{formatDate(h.date)}</td>
+              <td className="px-4 py-3">
+                <Link
+                  href={`/interview/${h.session_id}`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Review
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

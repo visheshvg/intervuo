@@ -3,10 +3,18 @@ import type {
   Analytics,
   InterviewSession,
   SessionDetail,
+  SubmitAnswerResponse,
   UploadResumeResponse,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+function networkErrorMessage(error: unknown): string {
+  if (error instanceof TypeError) {
+    return `Could not reach the Intervuo API at ${BASE_URL}. Make sure the backend is running and the browser can access this URL.`;
+  }
+  return error instanceof Error ? error.message : "Request failed.";
+}
 
 async function authHeaders(): Promise<HeadersInit> {
   const session = await getSession();
@@ -16,14 +24,19 @@ async function authHeaders(): Promise<HeadersInit> {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = await authHeaders();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-      ...(init.headers ?? {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    throw new Error(networkErrorMessage(error));
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: "Request failed" }));
     throw new Error(body.detail ?? `HTTP ${res.status}`);
@@ -57,11 +70,16 @@ export const api = {
       form.append("file", file);
       form.append("field", field);
       form.append("level", level);
-      const res = await fetch(`${BASE_URL}/api/resume/upload`, {
-        method: "POST",
-        headers,
-        body: form,
-      });
+      let res: Response;
+      try {
+        res = await fetch(`${BASE_URL}/api/resume/upload`, {
+          method: "POST",
+          headers,
+          body: form,
+        });
+      } catch (error) {
+        throw new Error(networkErrorMessage(error));
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({ detail: "Upload failed" }));
         throw new Error(body.detail ?? `HTTP ${res.status}`);
@@ -80,24 +98,24 @@ export const api = {
   },
 
   interview: {
-    submitAudio: async (
+    submitAnswer: (
       sessionId: string,
       questionIndex: number,
-      blob: Blob
-    ) => {
-      const headers = await authHeaders();
-      const form = new FormData();
-      form.append("audio", blob, "answer.webm");
-      const res = await fetch(
-        `${BASE_URL}/api/interview/submit-audio/${sessionId}/${questionIndex}`,
-        { method: "POST", headers, body: form }
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ detail: "Submission failed" }));
-        throw new Error(body.detail ?? `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<{ success: boolean; transcript: string; score: number }>;
-    },
+      answerText: string,
+      durationSeconds: number,
+      eyeContactPct: number | null
+    ) =>
+      request<SubmitAnswerResponse>(
+        `/api/interview/submit-answer/${sessionId}/${questionIndex}`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            answer_text: answerText,
+            duration_seconds: durationSeconds,
+            eye_contact_pct: eyeContactPct,
+          }),
+        }
+      ),
   },
 
   analytics: {

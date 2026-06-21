@@ -5,10 +5,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ink: { DEFAULT: "#1c1b19", soft: "#57564f" },
+        paper: "#f4f3ee",
+        line: "#e5e3db",
+        // accent, kept under the `primary` name so existing usages pick it up
         primary: {
-          DEFAULT: "#5b4af7",
-          hover: "#7c6ff7",
-          light: "#eeecfe",
+          DEFAULT: "#0d7d6a",
+          hover: "#0a6757",
+          light: "#e2efeb",
         },
       },
       fontFamily: {

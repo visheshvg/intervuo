@@ -23,6 +23,12 @@ export interface InterviewAnswer {
   final_score: number | null;
   strengths: string | null;
   improvements: string | null;
+  model_answer: string | null;
+  word_count: number | null;
+  filler_count: number | null;
+  speaking_wpm: number | null;
+  vader_compound: number | null;
+  eye_contact_pct: number | null;
 }
 
 export interface SessionDetail extends InterviewSession {
@@ -36,6 +42,22 @@ export interface FeedbackPayload {
   final_score: number;
   strengths: string;
   improvements: string;
+  model_answer: string;
+  word_count: number;
+  filler_count: number;
+  speaking_wpm: number | null;
+  vader_compound: number;
+  eye_contact_pct: number | null;
+}
+
+export interface ResumeTip {
+  present: boolean;
+  text: string;
+}
+
+export interface CourseRec {
+  name: string;
+  url: string;
 }
 
 export interface UploadResumeResponse {
@@ -43,6 +65,28 @@ export interface UploadResumeResponse {
   questions: string[];
   skills: string[];
   parsed_name: string;
+  phone: string;
+  page_count: number;
+  resume_score: number;
+  resume_tips: ResumeTip[];
+  predicted_field: string;
+  recommended_skills: string[];
+  courses: CourseRec[];
+}
+
+export interface SubmitAnswerResponse {
+  success: boolean;
+  content_score: number;
+  sentiment_score: number;
+  final_score: number;
+  strengths: string;
+  improvements: string;
+  model_answer: string;
+  word_count: number;
+  filler_count: number;
+  speaking_wpm: number | null;
+  vader_compound: number;
+  eye_contact_pct: number | null;
 }
 
 export interface AnalyticsHistory {
@@ -72,8 +116,3 @@ export type InterviewField =
   | "DevOps"
   | "Mobile"
   | "General";
-
-export type WsEvent =
-  | { event: "feedback_loading"; data: Record<string, never> }
-  | { event: "feedback_ready"; data: FeedbackPayload }
-  | { event: "feedback_error"; data: { detail: string } };

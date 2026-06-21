@@ -14,11 +14,12 @@ export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur">
+    <nav className="sticky top-0 z-40 border-b border-line bg-paper/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-lg font-bold tracking-tight text-primary">
-            Intervuo
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <span className="h-4 w-4 rounded-[4px] bg-primary" />
+            <span className="text-base font-semibold tracking-tight text-ink">Intervuo</span>
           </Link>
           <div className="flex gap-1">
             {NAV_LINKS.map(({ href, label }) => (
@@ -26,10 +27,10 @@ export function Navbar() {
                 key={href}
                 href={href}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  "rounded-md px-3 py-1.5 text-sm transition-colors",
                   pathname.startsWith(href)
-                    ? "bg-primary-light text-primary"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "bg-ink/[0.06] font-medium text-ink"
+                    : "text-ink-soft hover:text-ink"
                 )}
               >
                 {label}
@@ -38,10 +39,10 @@ export function Navbar() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">{session?.user?.name}</span>
+          <span className="text-sm text-ink-soft">{session?.user?.name}</span>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="rounded-md px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100"
+            className="rounded-md px-3 py-1.5 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
           >
             Sign out
           </button>

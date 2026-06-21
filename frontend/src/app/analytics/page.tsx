@@ -31,13 +31,13 @@ export default function AnalyticsPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-4">
               <Card>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                <p className="eyebrow text-ink-soft">
                   Total sessions
                 </p>
                 <p className="mt-1 text-2xl font-bold">{data.total_sessions}</p>
               </Card>
               <Card>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                <p className="eyebrow text-ink-soft">
                   Average score
                 </p>
                 <p className={`mt-1 text-2xl font-bold ${scoreColor(data.average_score)}`}>
@@ -45,7 +45,7 @@ export default function AnalyticsPage() {
                 </p>
               </Card>
               <Card>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                <p className="eyebrow text-ink-soft">
                   Best score
                 </p>
                 <p className={`mt-1 text-2xl font-bold ${scoreColor(data.best_score)}`}>
@@ -56,13 +56,13 @@ export default function AnalyticsPage() {
 
             {data.history.length > 1 && (
               <Card padding="lg">
-                <h2 className="mb-4 text-sm font-semibold text-gray-700">Score over time</h2>
+                <h2 className="mb-4 eyebrow text-ink-soft">Score over time</h2>
                 <ScoreChart history={data.history} />
               </Card>
             )}
 
             <Card padding="sm">
-              <h2 className="mb-4 px-2 text-sm font-semibold text-gray-700">Session history</h2>
+              <h2 className="mb-4 px-2 eyebrow text-ink-soft">Session history</h2>
               <SessionHistoryTable history={data.history} />
             </Card>
           </div>

@@ -3,11 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: system-ui, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
+    sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-paper text-ink antialiased;
+  }
+  ::selection {
+    @apply bg-ink text-paper;
+  }
+}
+
+@layer utilities {
+  /* faint dotted field for empty backgrounds */
+  .bg-dots {
+    background-image: radial-gradient(rgba(28, 27, 25, 0.06) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  /* small uppercase mono label used above headings and on form fields */
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.18em];
   }
 }

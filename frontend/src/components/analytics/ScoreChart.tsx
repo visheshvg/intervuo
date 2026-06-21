@@ -25,7 +25,7 @@ export function ScoreChart({ history }: ScoreChartProps) {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e3db" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} />
         <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
         <Tooltip
@@ -33,9 +33,9 @@ export function ScoreChart({ history }: ScoreChartProps) {
             if (!active || !payload?.length) return null;
             const d = payload[0].payload as { date: string; score: number; field: string };
             return (
-              <div className="rounded-lg border border-gray-100 bg-white p-3 text-xs shadow">
-                <p className="font-medium">{d.field}</p>
-                <p className="text-gray-400">{d.date}</p>
+              <div className="rounded-md border border-line bg-white p-3 text-xs shadow-sm">
+                <p className="font-medium text-ink">{d.field}</p>
+                <p className="text-ink-soft">{d.date}</p>
                 <p className="font-bold text-primary">{d.score} / 10</p>
               </div>
             );
@@ -44,9 +44,9 @@ export function ScoreChart({ history }: ScoreChartProps) {
         <Line
           type="monotone"
           dataKey="score"
-          stroke="#5b4af7"
+          stroke="#0d7d6a"
           strokeWidth={2}
-          dot={{ r: 3, fill: "#5b4af7" }}
+          dot={{ r: 3, fill: "#0d7d6a" }}
           activeDot={{ r: 5 }}
         />
       </LineChart>

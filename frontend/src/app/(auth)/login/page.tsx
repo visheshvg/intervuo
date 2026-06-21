@@ -40,39 +40,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-2xl font-bold tracking-tight text-primary">Intervuo</h1>
-        <p className="mb-7 text-sm text-gray-400">Sign in to your account</p>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            error={errors.email?.message}
-            {...register("email")}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            error={errors.password?.message}
-            {...register("password")}
-          />
-          {serverError && <p className="text-xs text-red-500">{serverError}</p>}
-          <Button size="full" type="submit" loading={isSubmitting}>
-            Sign in
-          </Button>
-        </form>
-
-        <p className="mt-5 text-center text-xs text-gray-400">
-          No account?{" "}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            Sign up free
-          </Link>
-        </p>
+    <>
+      <div className="mb-8 flex items-center gap-2 lg:hidden">
+        <span className="h-4 w-4 rounded-[4px] bg-primary" />
+        <span className="text-base font-semibold tracking-tight text-ink">Intervuo</span>
       </div>
-    </div>
+
+      <p className="eyebrow text-primary">Welcome back</p>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
+      <p className="mt-1 text-sm text-ink-soft">Pick up where you left off.</p>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-4">
+        <Input
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          error={errors.email?.message}
+          {...register("email")}
+        />
+        <Input
+          label="Password"
+          type="password"
+          placeholder="Enter your password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        {serverError && <p className="text-xs text-red-600">{serverError}</p>}
+        <Button size="full" type="submit" loading={isSubmitting}>
+          Sign in
+        </Button>
+      </form>
+
+      <p className="mt-6 text-sm text-ink-soft">
+        No account?{" "}
+        <Link href="/register" className="font-medium text-primary hover:underline">
+          Create one
+        </Link>
+      </p>
+    </>
   );
 }

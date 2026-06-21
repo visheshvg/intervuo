@@ -20,7 +20,7 @@ export function RecordButton({
   if (hasFeedback) {
     return (
       <Button size="full" onClick={onNext}>
-        Next question →
+        Next question &rarr;
       </Button>
     );
   }
@@ -34,7 +34,7 @@ export function RecordButton({
       disabled={isAnalyzing}
     >
       {isAnalyzing ? (
-        "Analysing…"
+        "Analysing..."
       ) : isRecording ? (
         <>
           <StopCircle className="h-4 w-4" />

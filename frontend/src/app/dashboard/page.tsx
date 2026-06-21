@@ -45,17 +45,17 @@ export default function DashboardPage() {
         {analytics && (
           <div className="mb-8 grid grid-cols-3 gap-4">
             <Card>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Sessions</p>
+              <p className="eyebrow text-ink-soft">Sessions</p>
               <p className="mt-1 text-2xl font-bold">{analytics.total_sessions}</p>
             </Card>
             <Card>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Avg score</p>
+              <p className="eyebrow text-ink-soft">Avg score</p>
               <p className={`mt-1 text-2xl font-bold ${scoreColor(analytics.average_score)}`}>
                 {analytics.average_score.toFixed(1)}
               </p>
             </Card>
             <Card>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Best score</p>
+              <p className="eyebrow text-ink-soft">Best score</p>
               <p className={`mt-1 text-2xl font-bold ${scoreColor(analytics.best_score)}`}>
                 {analytics.best_score.toFixed(1)}
               </p>
@@ -65,14 +65,14 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div>
-            <h2 className="mb-4 text-sm font-semibold text-gray-700">Start new interview</h2>
+            <h2 className="mb-4 eyebrow text-ink-soft">Start new interview</h2>
             <Card padding="lg">
               <ResumeDropzone />
             </Card>
           </div>
 
           <div>
-            <h2 className="mb-4 text-sm font-semibold text-gray-700">Recent sessions</h2>
+            <h2 className="mb-4 eyebrow text-ink-soft">Recent sessions</h2>
             {isLoading ? (
               <p className="text-sm text-gray-400">Loading...</p>
             ) : !sessions?.length ? (
@@ -88,7 +88,7 @@ export default function DashboardPage() {
                     <div className="flex-1">
                       <p className="text-sm font-medium">{s.field}</p>
                       <p className="text-xs text-gray-400">
-                        {s.experience_level} · {formatDate(s.created_at)}
+                        {s.experience_level} &middot; {formatDate(s.created_at)}
                       </p>
                     </div>
                     {s.total_score != null ? (
@@ -98,7 +98,7 @@ export default function DashboardPage() {
                     ) : (
                       <Badge variant="amber">Incomplete</Badge>
                     )}
-                    <Link href={`/interview/${s.id}`} className="text-xs text-primary hover:underline">
+                    <Link href={`/report/${s.id}`} className="text-xs text-primary hover:underline">
                       Review
                     </Link>
                   </Card>

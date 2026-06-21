@@ -1,35 +1,51 @@
+import asyncio
 import json
-import re
 from dataclasses import dataclass
 import google.generativeai as genai
 
+from app.config import settings
+
 _model = genai.GenerativeModel(
-    "gemini-1.5-flash",
-    generation_config={"temperature": 0.3, "max_output_tokens": 1024},
+    settings.gemini_model,
+    generation_config={
+        "temperature": 0.4,
+        # Room for the model's thinking budget plus the JSON feedback.
+        "max_output_tokens": 4096,
+        "response_mime_type": "application/json",
+    },
 )
 
 _EVAL_PROMPT = """
-You are evaluating a candidate's answer during a technical interview.
+You are a senior interviewer giving honest, specific feedback on a candidate's
+spoken answer. The answer is a raw speech-to-text transcript, so judge the content,
+not transcription artifacts.
 
 Question: {question}
 Candidate's answer: {answer}
 Field: {field}
 Experience level: {level}
 
-Score the answer on two dimensions (each 0.0 - 10.0):
-1. content_score  - technical accuracy, depth, relevance, use of examples
-2. sentiment_score - communication clarity, structure, confidence, conciseness
+Score two dimensions, each 0.0-10.0, calibrated to a {level} candidate:
+1. content_score   - technical accuracy, depth, relevant detail, concrete examples
+2. sentiment_score - communication: structure, clarity, conciseness, confidence, and
+                     filler-word habits visible in the transcript
 
-Also provide:
-- strengths: 1-2 sentences on what the candidate did well
-- improvements: 1-2 sentences on what they could improve
+Then write genuinely useful feedback. Do NOT give generic praise. Be concrete and
+reference what the candidate actually said.
+- strengths: 2-3 specific things they did well.
+- improvements: the most important gaps. Name the specific concepts or points they
+  missed and give concrete, actionable advice. Write it like a real interviewer:
+  direct and specific. 3-5 sentences.
+- model_answer: a tight outline of what a strong answer to this question covers,
+  as 3-5 short bullet lines separated by newlines.
 
 Return ONLY valid JSON (no markdown, no extra text):
 {{
   "content_score": 7.5,
   "sentiment_score": 8.0,
   "strengths": "...",
-  "improvements": "..."
+  "improvements": "...",
+  "model_answer": "- point one\\n- point two\\n- point three"
 }}
 """
 
@@ -41,6 +57,7 @@ class AnalysisResult:
     final_score: float
     strengths: str
     improvements: str
+    model_answer: str
 
 
 async def analyze_answer(
@@ -56,6 +73,7 @@ async def analyze_answer(
             final_score=0.0,
             strengths="No answer was provided.",
             improvements="Please attempt to answer every question.",
+            model_answer="",
         )
 
     prompt = _EVAL_PROMPT.format(
@@ -64,9 +82,11 @@ async def analyze_answer(
         field=field,
         level=level,
     )
-    response = await _model.generate_content_async(prompt)
+    response = await asyncio.wait_for(
+        _model.generate_content_async(prompt),
+        timeout=settings.ai_request_timeout,
+    )
     raw = response.text.strip()
-    raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
 
     try:
         data = json.loads(raw)
@@ -83,4 +103,5 @@ async def analyze_answer(
         final_score=final,
         strengths=data.get("strengths", ""),
         improvements=data.get("improvements", ""),
+        model_answer=data.get("model_answer", ""),
     )

@@ -1,3 +1,8 @@
+import os
+
+# config needs a secret before the app is imported
+os.environ.setdefault("INTERVUO_JWT_SECRET", "test-secret-key-not-for-production")
+
 import pytest
 import pytest_asyncio
 import uuid

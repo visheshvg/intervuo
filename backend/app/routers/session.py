@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -15,6 +15,8 @@ router = APIRouter()
 
 @router.get("/")
 async def list_sessions(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -22,6 +24,8 @@ async def list_sessions(
         select(InterviewSession)
         .where(InterviewSession.user_id == current_user.id)
         .order_by(InterviewSession.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     sessions = result.scalars().all()
     return [_session_summary(s) for s in sessions]
@@ -57,6 +61,12 @@ async def get_session(
                 "final_score": a.final_score,
                 "strengths": a.strengths,
                 "improvements": a.improvements,
+                "model_answer": a.model_answer,
+                "word_count": a.word_count,
+                "filler_count": a.filler_count,
+                "speaking_wpm": a.speaking_wpm,
+                "vader_compound": a.vader_compound,
+                "eye_contact_pct": a.eye_contact_pct,
             }
             for a in sess.answers
         ],

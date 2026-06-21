@@ -1,118 +1,44 @@
-import json
-from fastapi import (
-    APIRouter, Depends, File, Form, HTTPException,
-    Query, UploadFile, WebSocket, WebSocketDisconnect,
-)
-from jose import JWTError, jwt
+import logging
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.config import settings
 from app.database import get_db
-from app.middleware.auth import get_current_user
+from app.middleware.rate_limit import rate_limit
 from app.models.user import User
 from app.models.session import InterviewSession
 from app.models.answer import InterviewAnswer
-from app.services.transcription import transcribe_audio
 from app.services.answer_analyzer import analyze_answer
-from app.services.ws_manager import manager
-from app.schemas.interview import SubmitAnswerResponse
+from app.services.delivery import compute_delivery
+from app.schemas.interview import SubmitAnswerRequest, SubmitAnswerResponse
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _decode_ws_token(token: str) -> str | None:
-    try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        return payload.get("sub")
-    except JWTError:
-        return None
+def _combined_score(content: float, communication: float, eye_contact_pct: float | None) -> float:
+    """Transparent weighted blend of the answer's dimensions (each 0-10).
 
-
-@router.websocket("/ws/{session_id}")
-async def interview_ws(
-    websocket: WebSocket,
-    session_id: str,
-    token: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-):
+    Content dominates. Presence (eye contact) only counts when the camera was on;
+    otherwise its weight folds back into communication.
     """
-    Real-time feedback channel. Requires JWT via ?token= query param.
-
-    Client sends:
-      {"event": "answer_ready", "data": {"question_index": 0, "answer_text": "..."}}
-
-    Server replies:
-      {"event": "feedback_loading", "data": {}}
-      {"event": "feedback_ready",   "data": {question_index, content_score, sentiment_score, final_score, strengths, improvements}}
-      {"event": "feedback_error",   "data": {"detail": "..."}}
-    """
-    user_id = _decode_ws_token(token)
-    if not user_id:
-        await websocket.close(code=4001)
-        return
-
-    result = await db.execute(
-        select(InterviewSession).where(
-            InterviewSession.id == session_id,
-            InterviewSession.user_id == user_id,
-        )
-    )
-    sess = result.scalar_one_or_none()
-    if not sess:
-        await websocket.close(code=4004)
-        return
-
-    await manager.connect(websocket, session_id)
-    try:
-        while True:
-            raw = await websocket.receive_text()
-            msg = json.loads(raw)
-
-            if msg.get("event") != "answer_ready":
-                continue
-
-            d = msg["data"]
-            question_index = d.get("question_index", -1)
-
-            if not isinstance(question_index, int) or not (0 <= question_index < len(sess.questions)):
-                await manager.send(session_id, "feedback_error", {
-                    "detail": f"question_index {question_index} is out of range."
-                })
-                continue
-
-            await manager.send(session_id, "feedback_loading", {})
-
-            try:
-                analysis = await analyze_answer(
-                    question=sess.questions[question_index],
-                    answer=d.get("answer_text", ""),
-                    field=sess.field,
-                    level=sess.experience_level,
-                )
-                await manager.send(session_id, "feedback_ready", {
-                    "question_index": question_index,
-                    "content_score": analysis.content_score,
-                    "sentiment_score": analysis.sentiment_score,
-                    "final_score": analysis.final_score,
-                    "strengths": analysis.strengths,
-                    "improvements": analysis.improvements,
-                })
-            except Exception as exc:
-                await manager.send(session_id, "feedback_error", {"detail": str(exc)})
-
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, session_id)
+    if eye_contact_pct is not None:
+        # Calibrated: ~60% eye contact during an answer already earns full marks,
+        # since nobody (realistically) stares at the camera the entire time.
+        presence = max(0.0, min(10.0, eye_contact_pct / 6.0))
+        return round(content * 0.7 + communication * 0.2 + presence * 0.1, 2)
+    return round(content * 0.7 + communication * 0.3, 2)
 
 
-@router.post("/submit-audio/{session_id}/{question_index}", response_model=SubmitAnswerResponse)
-async def submit_audio(
+@router.post("/submit-answer/{session_id}/{question_index}", response_model=SubmitAnswerResponse)
+async def submit_answer(
     session_id: str,
     question_index: int,
-    audio: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    body: SubmitAnswerRequest,
+    current_user: User = Depends(rate_limit(max_requests=20, window_seconds=60)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Score a transcribed answer (Gemini), store it, and return the feedback."""
     result = await db.execute(
         select(InterviewSession).where(
             InterviewSession.id == session_id,
@@ -131,21 +57,21 @@ async def submit_audio(
 
     question_text = sess.questions[question_index]
 
-    audio_bytes = await audio.read()
-    try:
-        transcript = await transcribe_audio(audio_bytes, audio.content_type or "audio/webm")
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Transcription failed: {exc}")
-
     try:
         analysis = await analyze_answer(
             question=question_text,
-            answer=transcript,
+            answer=body.answer_text,
             field=sess.field,
             level=sess.experience_level,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Analysis failed: {exc}")
+    except Exception:
+        logger.exception("Gemini answer analysis failed")
+        raise HTTPException(status_code=502, detail="Answer analysis failed. Please try again.")
+
+    delivery = compute_delivery(body.answer_text, body.duration_seconds)
+    final_score = _combined_score(
+        analysis.content_score, analysis.sentiment_score, body.eye_contact_pct
+    )
 
     existing = await db.execute(
         select(InterviewAnswer).where(
@@ -155,38 +81,50 @@ async def submit_audio(
     )
     answer_row = existing.scalar_one_or_none()
     if answer_row:
-        answer_row.answer_text = transcript
+        answer_row.answer_text = body.answer_text
         answer_row.content_score = analysis.content_score
         answer_row.sentiment_score = analysis.sentiment_score
-        answer_row.final_score = analysis.final_score
+        answer_row.final_score = final_score
         answer_row.strengths = analysis.strengths
         answer_row.improvements = analysis.improvements
+        answer_row.model_answer = analysis.model_answer
+        answer_row.word_count = delivery["word_count"]
+        answer_row.filler_count = delivery["filler_count"]
+        answer_row.speaking_wpm = delivery["speaking_wpm"]
+        answer_row.vader_compound = delivery["vader_compound"]
+        answer_row.eye_contact_pct = body.eye_contact_pct
     else:
         answer_row = InterviewAnswer(
             session_id=session_id,
             question_index=question_index,
             question_text=question_text,
-            answer_text=transcript,
+            answer_text=body.answer_text,
             content_score=analysis.content_score,
             sentiment_score=analysis.sentiment_score,
-            final_score=analysis.final_score,
+            final_score=final_score,
             strengths=analysis.strengths,
             improvements=analysis.improvements,
+            model_answer=analysis.model_answer,
+            word_count=delivery["word_count"],
+            filler_count=delivery["filler_count"],
+            speaking_wpm=delivery["speaking_wpm"],
+            vader_compound=delivery["vader_compound"],
+            eye_contact_pct=body.eye_contact_pct,
         )
         db.add(answer_row)
     await db.flush()
 
-    await manager.send(session_id, "feedback_ready", {
-        "question_index": question_index,
-        "content_score": analysis.content_score,
-        "sentiment_score": analysis.sentiment_score,
-        "final_score": analysis.final_score,
-        "strengths": analysis.strengths,
-        "improvements": analysis.improvements,
-    })
-
     return SubmitAnswerResponse(
         success=True,
-        transcript=transcript,
-        score=analysis.final_score,
+        content_score=analysis.content_score,
+        sentiment_score=analysis.sentiment_score,
+        final_score=final_score,
+        strengths=analysis.strengths,
+        improvements=analysis.improvements,
+        model_answer=analysis.model_answer,
+        word_count=delivery["word_count"],
+        filler_count=delivery["filler_count"],
+        speaking_wpm=delivery["speaking_wpm"],
+        vader_compound=delivery["vader_compound"],
+        eye_contact_pct=body.eye_contact_pct,
     )

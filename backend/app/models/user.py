@@ -12,8 +12,6 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=False)
     hashed_password = Column(String, nullable=True)
-    oauth_provider = Column(String, nullable=True)
-    oauth_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     sessions = relationship(

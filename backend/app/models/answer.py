@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, Text, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, Float, Text, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -6,6 +6,13 @@ from app.database import Base
 
 class InterviewAnswer(Base):
     __tablename__ = "interview_answers"
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "question_index",
+            name="uq_interview_answers_session_question",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(
@@ -22,6 +29,12 @@ class InterviewAnswer(Base):
     final_score = Column(Float, nullable=True)
     strengths = Column(Text, nullable=True)
     improvements = Column(Text, nullable=True)
+    model_answer = Column(Text, nullable=True)
+    word_count = Column(Integer, nullable=True)
+    filler_count = Column(Integer, nullable=True)
+    speaking_wpm = Column(Float, nullable=True)
+    vader_compound = Column(Float, nullable=True)
+    eye_contact_pct = Column(Float, nullable=True)
     answered_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("InterviewSession", back_populates="answers")

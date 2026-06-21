@@ -6,9 +6,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.database import Base
+from app.config import settings
 import app.models  # noqa: F401
 
 config = context.config
+# use the same database url as the app, not a separate one in the ini
+config.set_main_option("sqlalchemy.url", settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

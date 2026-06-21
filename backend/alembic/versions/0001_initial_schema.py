@@ -22,8 +22,6 @@ def upgrade() -> None:
         sa.Column("email", sa.String(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("hashed_password", sa.String(), nullable=True),
-        sa.Column("oauth_provider", sa.String(), nullable=True),
-        sa.Column("oauth_id", sa.String(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

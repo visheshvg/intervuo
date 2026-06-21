@@ -1,13 +1,18 @@
+import asyncio
 import json
-import re
 import google.generativeai as genai
 
+from app.config import settings
+
 _model = genai.GenerativeModel(
-    "gemini-1.5-flash",
+    settings.gemini_model,
     generation_config={
         "temperature": 0.9,
         "top_p": 0.95,
-        "max_output_tokens": 2048,
+        # gemini-2.5 models spend output tokens on internal "thinking", so give the
+        # response plenty of room or the JSON array gets truncated mid-string.
+        "max_output_tokens": 8192,
+        "response_mime_type": "application/json",
     },
 )
 
@@ -47,16 +52,21 @@ async def generate_questions(
         level=level,
         num_questions=num_questions,
     )
-    response = await _model.generate_content_async(prompt)
-    raw = response.text.strip()
-    raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
+    response = await asyncio.wait_for(
+        _model.generate_content_async(prompt),
+        timeout=settings.ai_request_timeout,
+    )
 
     try:
-        questions: list = json.loads(raw)
+        data = json.loads(response.text.strip())
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Gemini returned non-JSON: {raw[:200]}") from exc
+        raise ValueError(f"Gemini returned non-JSON: {response.text[:200]}") from exc
 
-    if not isinstance(questions, list) or len(questions) < 2:
-        raise ValueError(f"Unexpected question format from Gemini: {questions}")
+    # JSON mode returns the array directly, but can wrap it in an object.
+    if isinstance(data, dict):
+        data = next((v for v in data.values() if isinstance(v, list)), [])
 
-    return [str(q) for q in questions[:num_questions]]
+    if not isinstance(data, list) or len(data) < 2:
+        raise ValueError(f"Unexpected question format from Gemini: {data}")
+
+    return [str(q) for q in data[:num_questions]]

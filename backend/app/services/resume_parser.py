@@ -1,8 +1,8 @@
 import io
 import re
 from dataclasses import dataclass
-from datetime import datetime
 from pdfminer.high_level import extract_text
+from pdfminer.pdfpage import PDFPage
 
 
 @dataclass
@@ -10,8 +10,24 @@ class ParsedResume:
     raw_text: str
     name: str
     email: str
+    phone: str
+    page_count: int
     skills: list[str]
-    experience_years: int
+
+
+def _extract_phone(text: str) -> str:
+    for cand in re.findall(r"\+?\d[\d\s().-]{8,}\d", text):
+        digits = re.sub(r"\D", "", cand)
+        if 10 <= len(digits) <= 13:
+            return cand.strip()
+    return ""
+
+
+def _count_pages(pdf_bytes: bytes) -> int:
+    try:
+        return sum(1 for _ in PDFPage.get_pages(io.BytesIO(pdf_bytes)))
+    except Exception:
+        return 0
 
 
 _SKILL_KEYWORDS: set[str] = {
@@ -29,7 +45,7 @@ def parse_resume(pdf_bytes: bytes) -> ParsedResume:
     try:
         text = extract_text(io.BytesIO(pdf_bytes))
     except Exception as exc:
-        raise ValueError(f"Could not extract text from PDF: {exc}") from exc
+        raise ValueError("Could not read the PDF. Please upload a valid PDF file.") from exc
 
     if not text or len(text.strip()) < 50:
         raise ValueError("PDF appears to be empty or image-only (no extractable text).")
@@ -46,18 +62,11 @@ def parse_resume(pdf_bytes: bytes) -> ParsedResume:
     text_lower = text.lower()
     skills = sorted(kw for kw in _SKILL_KEYWORDS if kw in text_lower)
 
-    current_year = datetime.now().year
-    year_matches = [
-        int(y) for y in re.findall(r"\b((?:19|20)\d{2})\b", text)
-        if 1980 <= int(y) <= current_year
-    ]
-    years = sorted(set(year_matches))
-    experience_years = (max(years) - min(years)) if len(years) >= 2 else 0
-
     return ParsedResume(
         raw_text=text,
         name=name,
         email=email,
+        phone=_extract_phone(text),
+        page_count=_count_pages(pdf_bytes),
         skills=skills,
-        experience_years=experience_years,
     )

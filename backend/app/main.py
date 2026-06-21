@@ -4,16 +4,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine
 import app.models  # noqa: F401
 from app.routers import auth, resume, interview, session, analytics
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # tables come from alembic migrations
     genai.configure(api_key=settings.gemini_api_key)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
 
@@ -27,7 +26,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

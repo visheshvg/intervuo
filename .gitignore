@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Logs
+*.log
+
+# Python cache / packaging
+.mypy_cache/
+pip-wheel-metadata/
+__pypackages__/
+
+# Coverage
+coverage.xml
+
+# Direnv
+.envrc
